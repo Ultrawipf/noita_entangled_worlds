@@ -625,6 +625,27 @@ function player_fns.release_held_players(entity)
     end
 end
 
+-- latest_inventory is a snapshot from before the entity was lost. A carried
+-- player in it may have been picked up by someone else since, and must not be
+-- pulled back out of that inventory.
+local function restore_latest_inventory(player_data)
+    local latest_inventory = player_data.latest_inventory
+    if latest_inventory == nil then
+        return
+    end
+    local items = {}
+    for _, item_info in ipairs(latest_inventory) do
+        local carried = item_info.peer_id ~= nil and ctx.players[item_info.peer_id]
+        if
+            item_info.peer_id == nil
+            or (carried and EntityGetIsAlive(carried.entity) and EntityGetParent(carried.entity) == 0)
+        then
+            table.insert(items, item_info)
+        end
+    end
+    player_fns.deserialize_items(items, player_data, false)
+end
+
 function player_fns.replace_player_entity(new_entity, player_data)
     if player_data.entity ~= ctx.my_player.entity then
         util.make_ephemerial(new_entity)
@@ -636,10 +657,7 @@ function player_fns.replace_player_entity(new_entity, player_data)
         print("Replaced player entity: " .. old_entity .. " -> " .. new_entity)
     else
         player_fns.spawn_player_for(player_data.peer_id, 0, 0, player_data)
-        local latest_inventory = player_data.latest_inventory
-        if latest_inventory ~= nil then
-            player_fns.deserialize_items(latest_inventory, player_data, false)
-        end
+        restore_latest_inventory(player_data)
     end
     ewext.register_player_entity(player_data.peer_id, player_data.entity)
 end
@@ -655,11 +673,7 @@ function player_fns.respawn_if_necessary()
         if peer_id ~= ctx.my_player.peer_id and not EntityGetIsAlive(player_data.entity) then
             print("Respawning player entity")
             player_fns.spawn_player_for(peer_id, 0, 0, player_data)
-            local latest_inventory = player_data.latest_inventory
-            if latest_inventory ~= nil then
-                print("Recovering inventory")
-                player_fns.deserialize_items(latest_inventory, player_data, false)
-            end
+            restore_latest_inventory(player_data)
         end
     end
 end

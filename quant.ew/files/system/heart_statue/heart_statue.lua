@@ -181,7 +181,7 @@ util.add_cross_call("ew_heart_statue_pickup", function(item)
 end)
 
 rpc.opts_reliable()
-function rpc.ensure_held(peer_id)
+function rpc.ensure_held(peer_id, slot_x)
     if peer_id ~= ctx.my_player.peer_id then
         return
     end
@@ -204,7 +204,25 @@ function rpc.ensure_held(peer_id)
         end
     end
     if not has_player then
-        EntityAddChild(inv, ctx.rpc_player_data.entity)
+        -- The statue can be a freshly respawned puppet that still sits in the
+        -- world, so it has to be switched to its in-inventory state as well.
+        local item = ctx.rpc_player_data.entity
+        if EntityGetParent(item) ~= 0 then
+            EntityRemoveFromParent(item)
+        end
+        EntityAddChild(inv, item)
+        -- A respawned puppet doesn't know which slot it was held in.
+        local item_comp = EntityGetFirstComponentIncludingDisabled(item, "ItemComponent")
+        if slot_x ~= nil and item_comp ~= nil then
+            ComponentSetValue2(item_comp, "inventory_slot", slot_x, 0)
+        end
+        EntitySetComponentsWithTagEnabled(item, "enabled_in_world", false)
+        EntitySetComponentsWithTagEnabled(item, "enabled_in_hand", false)
+        EntitySetComponentsWithTagEnabled(item, "enabled_in_inventory", true)
+        local inventory2 = EntityGetFirstComponentIncludingDisabled(ent, "Inventory2Component")
+        if inventory2 ~= nil then
+            ComponentSetValue2(inventory2, "mForceRefresh", true)
+        end
     end
 end
 
@@ -416,7 +434,10 @@ function heart_statue.on_world_update()
             rpc.disable_running(ctx.my_player.peer_id)
 
             if data ~= nil then
-                rpc.ensure_held(data.peer_id)
+                -- Our own copy still knows which slot the holder kept us in.
+                local item_comp = EntityGetFirstComponentIncludingDisabled(entity_id, "ItemComponent")
+                local slot_x = item_comp and ComponentGetValue2(item_comp, "inventory_slot")
+                rpc.ensure_held(data.peer_id, slot_x)
             end
         end
     elseif running_data and EntityHasTag(entity_id, "ew_hs_moving") then
