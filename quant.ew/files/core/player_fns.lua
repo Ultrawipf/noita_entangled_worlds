@@ -602,6 +602,29 @@ function player_fns.spawn_player_for(peer_id, x, y, existing_playerdata)
     ctx.hook.on_client_spawned(peer_id, new_playerdata)
 end
 
+-- A player can be carried as an item (heart statue), which makes its entity a
+-- child of the holder. Killing the holder kills its children too, so anything
+-- about to kill a player entity has to put the carried players back into the
+-- world first. On the carried player's own machine that child is their real
+-- player entity.
+function player_fns.release_held_players(entity)
+    if entity == nil or not EntityGetIsAlive(entity) then
+        return
+    end
+    for _, child in ipairs(EntityGetAllChildren(entity) or {}) do
+        if EntityGetName(child) == "inventory_quick" then
+            for _, item in ipairs(EntityGetAllChildren(child) or {}) do
+                if ctx.player_data_by_local_entity[item] ~= nil then
+                    EntitySetComponentsWithTagEnabled(item, "enabled_in_hand", false)
+                    EntitySetComponentsWithTagEnabled(item, "enabled_in_inventory", false)
+                    EntitySetComponentsWithTagEnabled(item, "enabled_in_world", true)
+                    EntityRemoveFromParent(item)
+                end
+            end
+        end
+    end
+end
+
 function player_fns.replace_player_entity(new_entity, player_data)
     if player_data.entity ~= ctx.my_player.entity then
         util.make_ephemerial(new_entity)

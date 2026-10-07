@@ -111,6 +111,8 @@ function net_handling.proxy.dc(_, peer_id)
     then
         return
     end
+    -- This entity stops moving until its owner is back.
+    player_fns.release_held_players(player.entity)
     local sprite = EntityGetFirstComponentIncludingDisabled(player.entity, "SpriteComponent")
     local name = ComponentGetValue2(sprite, "image_file")
     local new = string.sub(name, 0, -5) .. "_dc.xml"
@@ -130,6 +132,7 @@ function net_handling.proxy.leave(_, peer_id)
     local player = ctx.players[peer_id]
     if player ~= nil then
         GamePrint("Player " .. player.name .. " left")
+        player_fns.release_held_players(player.entity)
         EntityKill(player.entity)
         ctx.players[peer_id] = nil
     else

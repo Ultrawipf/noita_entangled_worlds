@@ -151,19 +151,9 @@ function rpc.replicate_projectile(seri_ent, position_x, position_y, target_x, ta
     GameShootProjectile(ctx.rpc_player_data.entity, position_x, position_y, target_x, target_y, ent)
 end
 
-local function enable_in_world(item)
-    EntitySetComponentsWithTagEnabled(item, "enabled_in_hand", false)
-    EntitySetComponentsWithTagEnabled(item, "enabled_in_inventory", false)
-    EntitySetComponentsWithTagEnabled(item, "enabled_in_world", true)
-end
-
 local function apply_seri_ent(player_data, seri_ent)
-    if
-        EntityGetRootEntity(ctx.my_player.entity) == player_data.entity
-        and player_data.peer_id ~= ctx.my_player.peer_id
-    then
-        enable_in_world(ctx.my_player.entity)
-    end
+    -- Both branches below kill player_data.entity.
+    player_fns.release_held_players(player_data.entity)
     if seri_ent ~= nil then
         local ent = util.deserialize_entity(seri_ent.data)
         EntityAddTag(ent, "ew_no_enemy_sync")
