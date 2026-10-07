@@ -316,6 +316,8 @@ local function fake_polymorph_into_entity(entity_path)
     EntityAddTag(notplayer, "polymorphed")
     EntityAddTag(notplayer, "polymorphed_player")
 
+    -- Keeps carried players out of the snapshot and drops them here instead of killing them.
+    player_fns.release_held_players(player_entity)
     GlobalsSetValue("ew_local_player_dead", tostring(base64.encode(util.serialize_entity(player_entity))))
     EntityKill(player_entity)
 

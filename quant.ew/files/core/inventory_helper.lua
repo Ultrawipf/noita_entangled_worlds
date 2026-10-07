@@ -251,7 +251,16 @@ local function get_item(itemInfo, inv, player, local_ent)
         remove_non_send(item)
         item = EZWand(item)
     elseif itemInfo.peer_id ~= nil then
-        item = ctx.players[itemInfo.peer_id].entity
+        -- The entry can be outdated: only a player that is still an item may be put into an inventory,
+        -- otherwise a revived player's real entity ends up as a child of the holder.
+        local carried = ctx.players[itemInfo.peer_id]
+        if
+            carried ~= nil
+            and EntityGetIsAlive(carried.entity)
+            and EntityHasTag(carried.entity, "polymorphed_player")
+        then
+            item = carried.entity
+        end
     else
         item = inventory_helper.deserialize_single_item(itemInfo.data, local_ent)
         remove_non_send(item)
